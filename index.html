@@ -310,7 +310,7 @@
     }
 
     async function downloadFile(id, url) {
-      await fetch(`${API_BASE_URL}/api/files/${id}/download`, { method: 'POST' });
+      await fetch(`${https://adsgramfiles.onrender.com}/api/files/${id}/download`, { method: 'POST' });
       
       if (tg && tg.openLink) {
         tg.openLink(url);
