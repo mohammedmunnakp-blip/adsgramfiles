@@ -1,1 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram File Vault</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-dark: #0a1128;
+      --bg-card: #1c2541;
+      --bg-hover: #293241;
+      --accent-blue: #0077b6;
+      --accent-glow: #00b4d8;
+      --text-main: #f8f9fa;
+      --text-muted: #90e0ef;
+      --border-color: rgba(0, 180, 216, 0.2);
+    }
 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding: 16px;
+      padding-bottom: 80px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header h1 {
+      font-size: 1.3rem;
+      color: var(--accent-glow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .admin-btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .admin-btn:hover {
+      background: #005f9e;
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+
+    .file-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .file-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.25);
+    }
+
+    .thumbnail-box {
+      width: 100%;
+      height: 110px;
+      background: #131b2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .thumbnail-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .file-info {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .file-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .meta-stat {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 17, 40, 0.85);
+      backdrop-filter: blur(5px);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-content h2 {
+      font-size: 1.1rem;
+      color: var(--accent-glow);
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-dark);
+      color: #fff;
+      font-size: 0.85rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-submit {
+      background: var(--accent-glow);
+      color: #000;
+      font-weight: bold;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 8px;
+      flex: 1;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1><i data-lucide="folder-down"></i> File Vault</h1>
+    <button class="admin-btn" onclick="openAddModal()">
+      <i data-lucide="plus-circle"></i> Add File
+    </button>
+  </div>
+
+  <div class="file-grid" id="fileGrid"></div>
+
+  <!-- Add File Modal -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <h2>Add New File Slot</h2>
+      <input type="text" id="fileTitle" class="input-field" placeholder="File Title" />
+      <input type="url" id="fileUrl" class="input-field" placeholder="File Download URL" />
+      <input type="url" id="fileThumb" class="input-field" placeholder="Thumbnail Image URL (Optional)" />
+      <input type="text" id="fileSize" class="input-field" placeholder="Size (e.g. 15 MB)" />
+      <input type="password" id="adminPass" class="input-field" placeholder="Admin Secret Password" />
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+        <button class="btn-submit" onclick="submitFile()">Add File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Details Modal -->
+  <div class="modal" id="detailsModal">
+    <div class="modal-content">
+      <h2 id="detailTitle">File Details</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);" id="detailMeta"></p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeDetailsModal()">Close</button>
+        <button class="btn-submit" id="downloadBtn">Download Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // REPLACE THIS with your live Render backend URL after deployment
+    const API_BASE_URL = "https://your-backend-app.onrender.com";
+
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    let currentFiles = [];
+
+    async function loadFiles() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/files`);
+        currentFiles = await res.json();
+        renderGrid();
+      } catch (err) {
+        console.error("Error loading files:", err);
+      }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('fileGrid');
+      grid.innerHTML = '';
+
+      currentFiles.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.onclick = () => openFileDetails(file.id);
+
+        const thumbSrc = file.thumbnail || 'https://via.placeholder.com/150/1c2541/00b4d8?text=FILE';
+
+        card.innerHTML = `
+          <div class="thumbnail-box">
+            <img src="${thumbSrc}" alt="${file.title}" />
+          </div>
+          <div class="file-info">
+            <div class="file-title">${file.title}</div>
+            <div class="file-meta">
+              <span class="meta-stat"><i data-lucide="eye" size="12"></i> ${file.views}</span>
+              <span class="meta-stat"><i data-lucide="download" size="12"></i> ${file.downloads}</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    async function openFileDetails(id) {
+      const res = await fetch(`${API_BASE_URL}/api/files/${id}/view`, { method: 'POST' });
+      const updatedFile = await res.json();
+
+      document.getElementById('detailTitle').innerText = updatedFile.title;
+      document.getElementById('detailMeta').innerText = `Size: ${updatedFile.size || 'N/A'} | Views: ${updatedFile.views} | Downloads: ${updatedFile.downloads}`;
+      
+      document.getElementById('downloadBtn').onclick = () => downloadFile(updatedFile.id, updatedFile.url);
+      document.getElementById('detailsModal').classList.add('active');
+      loadFiles();
+    }
+
+    async function downloadFile(id, url) {
+      await fetch(`${API_BASE_URL}/api/files/${id}/download`, { method: 'POST' });
+      
+      if (tg && tg.openLink) {
+        tg.openLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+      closeDetailsModal();
+      loadFiles();
+    }
+
+    function openAddModal() { document.getElementById('addModal').classList.add('active'); }
+    function closeAddModal() { document.getElementById('addModal').classList.remove('active'); }
+    function closeDetailsModal() { document.getElementById('detailsModal').classList.remove('active'); }
+
+    async function submitFile() {
+      const title = document.getElementById('fileTitle').value;
+      const url = document.getElementById('fileUrl').value;
+      const thumbnail = document.getElementById('fileThumb').value;
+      const size = document.getElementById('fileSize').value;
+      const adminPass = document.getElementById('adminPass').value;
+
+      if (!title || !url || !adminPass) {
+        alert("Title, File URL, and Admin Password are required!");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, url, thumbnail, size, adminPass })
+      });
+
+      if (res.ok) {
+        closeAddModal();
+        loadFiles();
+        alert("File slot added successfully!");
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.message}`);
+      }
+    }
+
+    loadFiles();
+  </script>
+</body>
+</html>
